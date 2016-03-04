@@ -24,6 +24,7 @@ public class SunsetFragment extends Fragment {
     private View mSceneView;
     private View mSunView;
     private View mSkyView;
+    private View mShadowView;
 
     private int mBlueSkyColor;
     private int mSunsetSkyColor;
@@ -32,6 +33,7 @@ public class SunsetFragment extends Fragment {
     private ObjectAnimator mHeightAnimator;
     private ObjectAnimator mNightColorAnimator;
     private ObjectAnimator mColorAnimator;
+    private ObjectAnimator mShadowHeightAnimator;
     private State mCurrentState = State.DAY;
 
     private enum State {
@@ -70,6 +72,14 @@ public class SunsetFragment extends Fragment {
         mSceneView = view;
         mSkyView = view.findViewById(R.id.sky);
         mSunView = view.findViewById(R.id.sun);
+        mShadowView = view.findViewById(R.id.shadow);
+
+        mSceneView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                mShadowView.setY(mSkyView.getBottom() - mSunView.getBottom());
+            }
+        });
         mSceneView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -89,14 +99,22 @@ public class SunsetFragment extends Fragment {
     }
 
     private void prepareAnimation() {
+
         float sunYStart = mSunView.getTop();
         float sunYEnd = mSkyView.getHeight();
-
         ObjectAnimator heightAnimator = ObjectAnimator
                 .ofFloat(mSunView, "y", sunYStart, sunYEnd)
                 .setDuration(3000);
         heightAnimator.setInterpolator(new AccelerateInterpolator());
         mHeightAnimator = heightAnimator;
+
+        float shadowYStart = mSkyView.getBottom() - mSunView.getBottom();
+        float shadowYEnd = -mShadowView.getHeight();
+        ObjectAnimator shadowHeightAnimator = ObjectAnimator
+                .ofFloat(mShadowView, "y", shadowYStart, shadowYEnd)
+                .setDuration(3000);
+        shadowHeightAnimator.setInterpolator(new AccelerateInterpolator());
+        mShadowHeightAnimator = shadowHeightAnimator;
 
         ObjectAnimator colorAnimator = ObjectAnimator
                 .ofInt(mSkyView, "backgroundColor", mBlueSkyColor, mSunsetSkyColor)
@@ -159,11 +177,13 @@ public class SunsetFragment extends Fragment {
             case SUN_RISING:
                 mHeightAnimator.reverse();
                 mColorAnimator.reverse();
+                mShadowHeightAnimator.reverse();
                 mCurrentState = State.SUN_SETTING;
                 break;
             case DAY:
                 mHeightAnimator.start();
                 mColorAnimator.start();
+                mShadowHeightAnimator.start();
                 mCurrentState = State.SUN_SETTING;
                 break;
             default:
@@ -177,6 +197,7 @@ public class SunsetFragment extends Fragment {
             case DAY_BREAKING:
                 mHeightAnimator.reverse();
                 mColorAnimator.reverse();
+                mShadowHeightAnimator.reverse();
                 mCurrentState = State.SUN_RISING;
                 break;
             default:

@@ -18,11 +18,24 @@
             android:layout_height="100dp"
             android:layout_gravity="center"
             android:src="@drawable/sun"/>
+
     </FrameLayout>
-    <View
+
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.39"
-        android:background="@color/sea"/>
+        android:layout_weight="0.31"
+        android:id="@+id/sea"
+        android:background="@color/sea">
+
+        <ImageView
+            android:id="@+id/shadow"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center"
+            android:src="@drawable/sun"
+            android:alpha="0.3"
+            />
+    </FrameLayout>
 
 </LinearLayout>
