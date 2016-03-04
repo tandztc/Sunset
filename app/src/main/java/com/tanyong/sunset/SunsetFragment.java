@@ -1,7 +1,8 @@
 package com.tanyong.sunset;
 
 
-import android.animation.AnimatorSet;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.content.res.Resources;
@@ -27,6 +28,15 @@ public class SunsetFragment extends Fragment {
     private int mBlueSkyColor;
     private int mSunsetSkyColor;
     private int mNightSkyColor;
+    private boolean mAnimatorInited = false;
+    private ObjectAnimator mHeightAnimator;
+    private ObjectAnimator mNightColorAnimator;
+    private ObjectAnimator mColorAnimator;
+    private State mCurrentState = State.DAY;
+
+    private enum State {
+        SUN_RISING, SUN_SETTING, DAY, NIGHT, NIGHT_FALLING, DAY_BREAKING
+    }
 
     public SunsetFragment() {
         // Required empty public constructor
@@ -63,7 +73,10 @@ public class SunsetFragment extends Fragment {
         mSceneView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startAnimation();
+                if (!mAnimatorInited) {
+                    prepareAnimation();
+                }
+                triggerAnimation();
             }
         });
 
@@ -71,10 +84,11 @@ public class SunsetFragment extends Fragment {
         mBlueSkyColor = resources.getColor(R.color.blue_sky);
         mSunsetSkyColor = resources.getColor(R.color.sunset_sky);
         mNightSkyColor = resources.getColor(R.color.night_sky);
+
         return view;
     }
 
-    private void startAnimation() {
+    private void prepareAnimation() {
         float sunYStart = mSunView.getTop();
         float sunYEnd = mSkyView.getHeight();
 
@@ -82,20 +96,119 @@ public class SunsetFragment extends Fragment {
                 .ofFloat(mSunView, "y", sunYStart, sunYEnd)
                 .setDuration(3000);
         heightAnimator.setInterpolator(new AccelerateInterpolator());
+        mHeightAnimator = heightAnimator;
 
         ObjectAnimator colorAnimator = ObjectAnimator
                 .ofInt(mSkyView, "backgroundColor", mBlueSkyColor, mSunsetSkyColor)
                 .setDuration(3000);
         colorAnimator.setEvaluator(new ArgbEvaluator());
+        mColorAnimator = colorAnimator;
 
         ObjectAnimator nightColorAnimator = ObjectAnimator.
                 ofInt(mSkyView, "backgroundColor", mSunsetSkyColor, mNightSkyColor)
                 .setDuration(1000);
         nightColorAnimator.setEvaluator(new ArgbEvaluator());
+        mNightColorAnimator = nightColorAnimator;
 
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.play(heightAnimator).with(colorAnimator).before(nightColorAnimator);
-        animatorSet.start();
+        mHeightAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                if (mCurrentState == State.SUN_SETTING) {
+                    playNightfall();
+                } else {
+                    mCurrentState = State.DAY;
+                }
+
+            }
+        });
+        mNightColorAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                if (mCurrentState == State.DAY_BREAKING) {
+                    playSunrise();
+                } else {
+                    mCurrentState = State.NIGHT;
+                }
+            }
+        });
+        mAnimatorInited = true;
+    }
+
+    private void triggerAnimation() {
+        switch (mCurrentState) {
+            case DAY:
+            case SUN_RISING:
+                playSunset();
+                break;
+            case SUN_SETTING:
+                playSunrise();
+                break;
+            case NIGHT:
+            case NIGHT_FALLING:
+                playDaybreak();
+                break;
+            case DAY_BREAKING:
+                playNightfall();
+        }
+    }
+
+    private void playSunset() {
+        switch (mCurrentState) {
+            case SUN_RISING:
+                mHeightAnimator.reverse();
+                mColorAnimator.reverse();
+                mCurrentState = State.SUN_SETTING;
+                break;
+            case DAY:
+                mHeightAnimator.start();
+                mColorAnimator.start();
+                mCurrentState = State.SUN_SETTING;
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void playSunrise() {
+        switch (mCurrentState) {
+            case SUN_SETTING:
+            case DAY_BREAKING:
+                mHeightAnimator.reverse();
+                mColorAnimator.reverse();
+                mCurrentState = State.SUN_RISING;
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void playNightfall() {
+        switch (mCurrentState) {
+            case DAY_BREAKING:
+                mNightColorAnimator.reverse();
+                mCurrentState = State.NIGHT_FALLING;
+                break;
+            case SUN_SETTING:
+                mNightColorAnimator.start();
+                mCurrentState = State.NIGHT_FALLING;
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void playDaybreak() {
+        switch (mCurrentState) {
+            case NIGHT:
+            case NIGHT_FALLING:
+                mNightColorAnimator.reverse();
+                mCurrentState = State.DAY_BREAKING;
+                break;
+            default:
+                break;
+        }
     }
 
 }
